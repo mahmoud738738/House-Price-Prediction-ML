@@ -1,6 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
-from backend.app.main import app
+try:
+    from app.main import app
+except ImportError:
+    from backend.app.main import app
 
 @pytest.fixture(scope="module")
 def client():

@@ -1,8 +1,12 @@
 import json
 import os
 import pandas as pd
-from backend.app.schemas.prediction import PredictionRequest
-from backend.app.utils.logging_config import logger
+try:
+    from app.schemas.prediction import PredictionRequest
+    from app.utils.logging_config import logger
+except ImportError:
+    from backend.app.schemas.prediction import PredictionRequest
+    from backend.app.utils.logging_config import logger
 
 # Load valid locations list
 _allowed_locations = set()

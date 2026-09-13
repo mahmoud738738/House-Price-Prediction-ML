@@ -2,12 +2,24 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import sys
 
-from backend.app.core.config import settings
-from backend.app.api.routes.prediction import router as prediction_router
-from backend.app.services.inference import load_model
-from backend.app.services.preprocessing import load_allowed_locations
-from backend.app.utils.logging_config import logger
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
+try:
+    from app.core.config import settings
+    from app.api.routes.prediction import router as prediction_router
+    from app.services.inference import load_model
+    from app.services.preprocessing import load_allowed_locations
+    from app.utils.logging_config import logger
+except ImportError:
+    from backend.app.core.config import settings
+    from backend.app.api.routes.prediction import router as prediction_router
+    from backend.app.services.inference import load_model
+    from backend.app.services.preprocessing import load_allowed_locations
+    from backend.app.utils.logging_config import logger
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

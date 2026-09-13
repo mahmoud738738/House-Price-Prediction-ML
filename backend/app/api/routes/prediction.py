@@ -1,8 +1,14 @@
 from fastapi import APIRouter, Request, HTTPException, status
-from backend.app.schemas.prediction import PredictionRequest, PredictionResponse, HealthResponse
-from backend.app.services.preprocessing import preprocess_request
-from backend.app.services.inference import predict_price
-from backend.app.utils.logging_config import logger
+try:
+    from app.schemas.prediction import PredictionRequest, PredictionResponse, HealthResponse
+    from app.services.preprocessing import preprocess_request
+    from app.services.inference import predict_price
+    from app.utils.logging_config import logger
+except ImportError:
+    from backend.app.schemas.prediction import PredictionRequest, PredictionResponse, HealthResponse
+    from backend.app.services.preprocessing import preprocess_request
+    from backend.app.services.inference import predict_price
+    from backend.app.utils.logging_config import logger
 
 router = APIRouter()
 

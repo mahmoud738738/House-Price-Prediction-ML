@@ -1,9 +1,14 @@
 import joblib
 import os
 import pandas as pd
-from backend.app.schemas.prediction import PredictionResponse
-from backend.app.services.preprocessing import format_inr_price
-from backend.app.utils.logging_config import logger
+try:
+    from app.schemas.prediction import PredictionResponse
+    from app.services.preprocessing import format_inr_price
+    from app.utils.logging_config import logger
+except ImportError:
+    from backend.app.schemas.prediction import PredictionResponse
+    from backend.app.services.preprocessing import format_inr_price
+    from backend.app.utils.logging_config import logger
 
 def load_model(model_path: str):
     """Load serialized scikit-learn pipeline from disk."""
