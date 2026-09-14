@@ -80,6 +80,10 @@ def parse_floor(val):
     return int(m.group(1)) if m else 0
 
 df = df_raw.copy()
+df = df.drop(columns=["Index"], errors="ignore")
+dups_count = df.duplicated().sum()
+df = df.drop_duplicates().reset_index(drop=True)
+print(f"Removed {dups_count:,} duplicate rows. Remaining unique listings: {df.shape[0]:,}")
 
 # Cleaning
 df["price_clean"] = df["Amount(in rupees)"].apply(parse_amount)

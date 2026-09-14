@@ -14,6 +14,7 @@ Handling real-world real estate data comes with severe challenges: skewed prices
 Here is how I tackled the entire lifecycle from raw data to full-stack deployment:
 
 🔍 1. Data Engineering & EDA (187,000+ listings)
+• Detected & eliminated 119,339 duplicated listings (drop_duplicates) to eliminate train-test data leakage.
 • Extracted and standardized amounts (Lacs, Crores) and mixed area units (sqm, sqyrd, acre to sqft).
 • Filtered extreme outliers using 1st & 99th quantile thresholds on price-per-sqft.
 • Conducted deep exploratory data analysis using Seaborn across top 15 real estate hubs.
@@ -55,6 +56,7 @@ Check out the architecture and visualizations below! Feedback and connections ar
 المشروع مبني على تحليل وتدريب بيانات حقيقية لأكثر من 187,000 عقار، ويتضمن معالجة متقدمة للمشاكل الشائعة في بيانات السوق الحقيقي:
 
 🔹 1. معالجة البيانات والاستكشاف (Data Cleaning & EDA):
+- اكتشاف وإزالة 119,339 صف مكرر (drop_duplicates) لمنع تسرب البيانات (Data Leakage) بين التدريب والاختبار.
 - تنظيف وتوحيد وحدات المساحات المختلفة (sqm, sqyrd, acres إلى sqft) وتحويل الأسعار الهندية (Lac & Cr).
 - فلترة القيم الشاذة (Outliers) باستخدام الـ Quantiles لضمان دقة واستقرار البيانات.
 - تحليل بصري تفصيلي باستخدام Seaborn لمعرفة تأثير الموقع، نوع الفرش، وعدد الحمامات.

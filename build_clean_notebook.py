@@ -144,11 +144,24 @@ missing_series = (df.isna().mean() * 100).sort_values(ascending=False)
 missing_text = missing_series[missing_series > 0].round(2).to_string()
 add_code(code_missing, [new_output(output_type='execute_result', execution_count=exec_cnt, data={'text/plain': missing_text})])
 
-# Cell 7: Inspection Notes
-add_md("""### Inspection Notes
-- **Rows & Columns**: 187,531 rows, 21 columns.
-- **Data types**: Only `Index` and `Price (in rupees)` are numeric. All other columns are strings/text (including `Amount(in rupees)`).
-- **Missing values**: `Dimensions` and `Plot Area` are almost 100% missing. `overlooking`, `Carpet Area`, and `Car Parking` also have high missing rates.""")
+# Cell 7: Deduplication
+df = df.drop(columns=["Index"], errors="ignore")
+dups_count = int(df.duplicated().sum())
+df = df.drop_duplicates().reset_index(drop=True)
+
+code_duplicates = """# Check and remove duplicate listings (excluding artificial 'Index' column)
+df = df.drop(columns=["Index"], errors="ignore")
+print(f"Duplicate rows detected: {df.duplicated().sum():,}")
+df = df.drop_duplicates().reset_index(drop=True)
+print(f"Dataset shape after drop_duplicates: {df.shape[0]:,} rows, {df.shape[1]} columns")"""
+
+add_code(code_duplicates, [text_to_output(f"Duplicate rows detected: {dups_count:,}\nDataset shape after drop_duplicates: {df.shape[0]:,} rows, {df.shape[1]} columns\n")])
+
+# Cell 8: Inspection Notes
+add_md("""### Inspection & Cleaning Notes
+- **Initial Shape**: 187,531 rows, 21 columns.
+- **Duplicates**: The dataset contains an artificial row identifier (`Index`). Once excluded, 119,339 duplicate listings were identified and removed via `drop_duplicates()`, retaining 68,192 unique listings to eliminate train-test data leakage.
+- **Missing values**: `Dimensions` and `Plot Area` are 100% missing. `Carpet Area` has ~43% missing values, imputed using `Super Area`.""")
 
 # Cell 8: Section 2.2 EDA
 add_md("""## 2.2 Exploratory Data Analysis (EDA)

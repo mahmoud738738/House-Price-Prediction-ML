@@ -60,6 +60,8 @@ def parse_floor(val):
 
 print("2. Preprocessing data...")
 df = df_raw.copy()
+df = df.drop(columns=["Index"], errors="ignore")
+df = df.drop_duplicates().reset_index(drop=True)
 df["price_clean"] = df["Amount(in rupees)"].apply(parse_amount)
 df = df.dropna(subset=["price_clean"])
 
