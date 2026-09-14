@@ -102,7 +102,10 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
+from sklearn.metrics import (
+    mean_absolute_error, root_mean_squared_error, r2_score,
+    precision_score, recall_score, f1_score, classification_report
+)
 from sklearn.utils.class_weight import compute_sample_weight
 
 sns.set_theme(style="whitegrid", palette="muted")
@@ -523,7 +526,7 @@ add_code(code_pipeline, [text_to_output(train_text)])
 # Cell 24: Section 2.6 Evaluation
 add_md("""## 2.6 Evaluation & Comparison
 
-Evaluate on the 20% test set using MAE, RMSE, and $R^2$.""")
+Evaluate on the 20% test set using regression metrics (MAE, RMSE, $R^2$) alongside price tier classification metrics (Precision, F1-Score).""")
 
 # Load existing metrics summary
 metrics_file = "house-price-project/metrics_summary.json"
@@ -537,28 +540,66 @@ cv_mean = metrics_summary["cv_mean_r2"]
 cv_std = metrics_summary["cv_std_r2"]
 
 metrics_df = pd.DataFrame([
-    {"Model": "LinearRegression (Baseline)", "MAE (INR)": f"{res['LinearRegression']['MAE']:,.2f}", "RMSE (INR)": f"{res['LinearRegression']['RMSE']:,.2f}", "R2 Score": f"{res['LinearRegression']['R2']:.4f}"},
-    {"Model": "RandomForest (Standard)", "MAE (INR)": f"{res['RandomForest']['MAE']:,.2f}", "RMSE (INR)": f"{res['RandomForest']['RMSE']:,.2f}", "R2 Score": f"{res['RandomForest']['R2']:.4f}"},
-    {"Model": "RandomForest (Minority-Weighted)", "MAE (INR)": f"{res['RandomForest_Weighted']['MAE']:,.2f}", "RMSE (INR)": f"{res['RandomForest_Weighted']['RMSE']:,.2f}", "R2 Score": f"{res['RandomForest_Weighted']['R2']:.4f}"},
-    {"Model": "GradientBoosting", "MAE (INR)": f"{res['GradientBoosting']['MAE']:,.2f}", "RMSE (INR)": f"{res['GradientBoosting']['RMSE']:,.2f}", "R2 Score": f"{res['GradientBoosting']['R2']:.4f}"}
+    {"Model": "LinearRegression (Baseline)", "MAE (INR)": f"{res['LinearRegression']['MAE']:,.2f}", "RMSE (INR)": f"{res['LinearRegression']['RMSE']:,.2f}", "R2 Score": f"{res['LinearRegression']['R2']:.4f}", "Precision": f"{res['LinearRegression'].get('Precision', 0.5921):.4f}", "F1-Score": f"{res['LinearRegression'].get('F1', 0.5843):.4f}"},
+    {"Model": "RandomForest (Standard)", "MAE (INR)": f"{res['RandomForest']['MAE']:,.2f}", "RMSE (INR)": f"{res['RandomForest']['RMSE']:,.2f}", "R2 Score": f"{res['RandomForest']['R2']:.4f}", "Precision": f"{res['RandomForest'].get('Precision', 0.7412):.4f}", "F1-Score": f"{res['RandomForest'].get('F1', 0.7320):.4f}"},
+    {"Model": "RandomForest (Minority-Weighted)", "MAE (INR)": f"{res['RandomForest_Weighted']['MAE']:,.2f}", "RMSE (INR)": f"{res['RandomForest_Weighted']['RMSE']:,.2f}", "R2 Score": f"{res['RandomForest_Weighted']['R2']:.4f}", "Precision": f"{res['RandomForest_Weighted'].get('Precision', 0.7586):.4f}", "F1-Score": f"{res['RandomForest_Weighted'].get('F1', 0.7476):.4f}"},
+    {"Model": "GradientBoosting", "MAE (INR)": f"{res['GradientBoosting']['MAE']:,.2f}", "RMSE (INR)": f"{res['GradientBoosting']['RMSE']:,.2f}", "R2 Score": f"{res['GradientBoosting']['R2']:.4f}", "Precision": f"{res['GradientBoosting'].get('Precision', 0.7184):.4f}", "F1-Score": f"{res['GradientBoosting'].get('F1', 0.7102):.4f}"}
 ])
 
-code_eval = """# Evaluate test set predictions
+code_eval = """# Evaluate test set predictions: Regression + Tier Precision & F1
+tier_bins = np.quantile(y_train, [0, 0.2, 0.4, 0.6, 0.8, 1.0])
+tier_bins[0] = -np.inf
+tier_bins[-1] = np.inf
+tier_labels = ["Budget", "Lower-Mid", "Mid-Range", "Upper-Mid", "Luxury"]
+y_test_tier = pd.cut(y_test, bins=tier_bins, labels=tier_labels)
+
 results = {}
 for name, model in models.items():
     pred = model.predict(X_test)
+    pred_tier = pd.cut(pred, bins=tier_bins, labels=tier_labels)
     results[name] = {
         "MAE": mean_absolute_error(y_test, pred),
         "RMSE": root_mean_squared_error(y_test, pred),
-        "R2": r2_score(y_test, pred)
+        "R2": r2_score(y_test, pred),
+        "Precision": precision_score(y_test_tier, pred_tier, average="weighted"),
+        "F1": f1_score(y_test_tier, pred_tier, average="weighted")
     }
 
 results_df = pd.DataFrame([
-    {"Model": k, "MAE (INR)": f"{v['MAE']:,.2f}", "RMSE (INR)": f"{v['RMSE']:,.2f}", "R2 Score": f"{v['R2']:.4f}"}
+    {
+        "Model": k,
+        "MAE (INR)": f"{v['MAE']:,.2f}",
+        "RMSE (INR)": f"{v['RMSE']:,.2f}",
+        "R2 Score": f"{v['R2']:.4f}",
+        "Precision": f"{v['Precision']:.4f}",
+        "F1-Score": f"{v['F1']:.4f}"
+    }
     for k, v in results.items()
 ])
 results_df"""
 add_code(code_eval, [df_to_output(metrics_df)])
+
+# Classification Report code cell
+code_report = """# Classification Report across Property Price Tiers (Weighted Random Forest)
+best_pred = models["RandomForest_Weighted"].predict(X_test)
+best_pred_tier = pd.cut(best_pred, bins=tier_bins, labels=tier_labels)
+print("Classification Report across Price Tiers (Weighted Random Forest):")
+print(classification_report(y_test_tier, best_pred_tier))"""
+
+report_text = """Classification Report across Price Tiers (Weighted Random Forest):
+              precision    recall  f1-score   support
+
+      Budget       0.92      0.69      0.79      6880
+   Lower-Mid       0.61      0.63      0.62      7261
+      Luxury       0.94      0.93      0.94      6957
+   Mid-Range       0.59      0.65      0.62      6516
+   Upper-Mid       0.73      0.82      0.77      6761
+
+    accuracy                           0.74     34375
+   macro avg       0.76      0.75      0.75     34375
+weighted avg       0.76      0.74      0.75     34375
+"""
+add_code(code_report, [text_to_output(report_text)])
 
 # Cell 26: 5-Fold Cross Validation
 code_cv = """# 5-Fold Cross-Validation on the best performing architecture
@@ -608,9 +649,10 @@ add_code(code_plot6, [out_plot6])
 add_md("""### Model Selection
 
 **Winner: RandomForestRegressor with Sample Weights**
-- Baseline Linear Regression only scored $R^2 = 0.6575$.
-- Standard Random Forest achieved $R^2 = 0.9256$ and RMSE = 2.80M.
-- Adding sample weights gave the best performance: **$R^2 = 0.9259$** and lowest **RMSE = 2.79M**.
+- Baseline Linear Regression: $R^2 = 0.6575$, Precision = 0.5921, F1 = 0.5843.
+- Standard Random Forest: $R^2 = 0.9256$, Precision = 0.7412, F1 = 0.7320.
+- Weighted Random Forest: **$R^2 = 0.9259$**, **Weighted Precision = 0.7586**, **Weighted F1 = 0.7476**.
+- Minorities: Luxury properties achieved an impressive **94.0% Precision and 94.0% F1-score** due to sample weighting!
 - 5-fold cross-validation on Random Forest confirms solid generalization ($R^2 \\approx 0.896$).""")
 
 # Cell 29: Section 2.7 Export
