@@ -18,6 +18,9 @@ from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.compose import TransformedTargetRegressor
+import numpy as np
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, root_mean_squared_error, r2_score
 from sklearn.utils.class_weight import compute_sample_weight
@@ -125,43 +128,32 @@ y = df["price_clean"]
 # Train/Test Split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Calculate and print data-driven quantiles to justify boundaries
-quantiles = y_train.quantile([0.25, 0.5, 0.75, 0.90, 0.95])
-print("Derived Quantiles from training data:")
-for q, val in quantiles.items():
-    print(f"  {int(q*100)}th Percentile: {val:,.0f} INR")
-print("Using Domain/Business-based real-estate boundaries inspired by these quantiles for sample weighting.")
 
-# Imbalance weighting (Business/Domain-based thresholds)
-bins = [0, 4_500_000, 7_500_000, 12_500_000, 25_000_000, float("inf")]
-labels = ["Budget", "Lower-Mid", "Mid-Range", "Upper-Mid", "Luxury"]
-price_bins_train = pd.cut(y_train, bins=bins, labels=labels, include_lowest=True)
-sample_weights_train = compute_sample_weight('balanced', price_bins_train)
 
 # Preprocessor
 preprocessor = ColumnTransformer([
     ("num", Pipeline([("impute", SimpleImputer(strategy="median")), ("scale", StandardScaler())]), numeric_features),
-    ("cat", Pipeline([("impute", SimpleImputer(strategy="most_frequent")), ("onehot", OneHotEncoder(handle_unknown="ignore"))]), categorical_features),
+    ("cat", Pipeline([("impute", SimpleImputer(strategy="most_frequent")), ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))]), categorical_features),
 ])
 
-# Define models
+# Define models with Log Transformation (TransformedTargetRegressor)
 models = {
-    "LinearRegression": Pipeline([
-        ("prep", preprocessor),
-        ("reg", LinearRegression())
-    ]),
-    "RandomForest": Pipeline([
-        ("prep", preprocessor),
-        ("reg", RandomForestRegressor(n_estimators=100, max_depth=16, random_state=42, n_jobs=-1))
-    ]),
-    "RandomForest_Weighted": Pipeline([
-        ("prep", preprocessor),
-        ("reg", RandomForestRegressor(n_estimators=100, max_depth=16, random_state=42, n_jobs=-1))
-    ]),
-    "GradientBoosting": Pipeline([
-        ("prep", preprocessor),
-        ("reg", GradientBoostingRegressor(n_estimators=100, max_depth=6, random_state=42))
-    ])
+    "LinearRegression": TransformedTargetRegressor(
+        regressor=Pipeline([("prep", preprocessor), ("reg", LinearRegression())]),
+        func=np.log1p, inverse_func=np.expm1
+    ),
+    "RandomForest": TransformedTargetRegressor(
+        regressor=Pipeline([("prep", preprocessor), ("reg", RandomForestRegressor(n_estimators=100, max_depth=16, random_state=42, n_jobs=-1))]),
+        func=np.log1p, inverse_func=np.expm1
+    ),
+    "HistGradientBoosting": TransformedTargetRegressor(
+        regressor=Pipeline([("prep", preprocessor), ("reg", HistGradientBoostingRegressor(random_state=42))]),
+        func=np.log1p, inverse_func=np.expm1
+    ),
+    "GradientBoosting": TransformedTargetRegressor(
+        regressor=Pipeline([("prep", preprocessor), ("reg", GradientBoostingRegressor(n_estimators=100, random_state=42))]),
+        func=np.log1p, inverse_func=np.expm1
+    )
 }
 
 results = {}
@@ -185,13 +177,13 @@ results["RandomForest"] = {
     "R2": float(r2_score(y_test, preds["RandomForest"]))
 }
 
-print("Training RandomForest (Minority Sample-Weighted)...")
-models["RandomForest_Weighted"].fit(X_train, y_train, reg__sample_weight=sample_weights_train)
-preds["RandomForest_Weighted"] = models["RandomForest_Weighted"].predict(X_test)
-results["RandomForest_Weighted"] = {
-    "MAE": float(mean_absolute_error(y_test, preds["RandomForest_Weighted"])),
-    "RMSE": float(root_mean_squared_error(y_test, preds["RandomForest_Weighted"])),
-    "R2": float(r2_score(y_test, preds["RandomForest_Weighted"]))
+print("Training HistGradientBoosting...")
+models["HistGradientBoosting"].fit(X_train, y_train)
+preds["HistGradientBoosting"] = models["HistGradientBoosting"].predict(X_test)
+results["HistGradientBoosting"] = {
+    "MAE": float(mean_absolute_error(y_test, preds["HistGradientBoosting"])),
+    "RMSE": float(root_mean_squared_error(y_test, preds["HistGradientBoosting"])),
+    "R2": float(r2_score(y_test, preds["HistGradientBoosting"]))
 }
 
 print("Training GradientBoosting...")
