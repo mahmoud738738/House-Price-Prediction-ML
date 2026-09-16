@@ -130,11 +130,11 @@ quantiles = y_train.quantile([0.25, 0.5, 0.75, 0.90, 0.95])
 print("Derived Quantiles from training data:")
 for q, val in quantiles.items():
     print(f"  {int(q*100)}th Percentile: {val:,.0f} INR")
-print("Using logical real-estate boundaries based on these quantiles for sample weighting.")
+print("Using Domain/Business-based real-estate boundaries inspired by these quantiles for sample weighting.")
 
-# Imbalance weighting (Data-driven thresholds)
+# Imbalance weighting (Business/Domain-based thresholds)
 bins = [0, 4_500_000, 7_500_000, 12_500_000, 25_000_000, float("inf")]
-labels = ["Budget (Q1)", "Lower-Mid (Q2)", "Mid-Range (Q3)", "Upper-Mid (Q4)", "Luxury (Q5)"]
+labels = ["Budget", "Lower-Mid", "Mid-Range", "Upper-Mid", "Luxury"]
 price_bins_train = pd.cut(y_train, bins=bins, labels=labels, include_lowest=True)
 sample_weights_train = compute_sample_weight('balanced', price_bins_train)
 
