@@ -125,6 +125,13 @@ y = df["price_clean"]
 # Train/Test Split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
+# Calculate and print data-driven quantiles to justify boundaries
+quantiles = y_train.quantile([0.25, 0.5, 0.75, 0.90, 0.95])
+print("Derived Quantiles from training data:")
+for q, val in quantiles.items():
+    print(f"  {int(q*100)}th Percentile: {val:,.0f} INR")
+print("Using logical real-estate boundaries based on these quantiles for sample weighting.")
+
 # Imbalance weighting (Data-driven thresholds)
 bins = [0, 4_500_000, 7_500_000, 12_500_000, 25_000_000, float("inf")]
 labels = ["Budget (Q1)", "Lower-Mid (Q2)", "Mid-Range (Q3)", "Upper-Mid (Q4)", "Luxury (Q5)"]
