@@ -126,7 +126,9 @@ y = df["price_clean"]
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Imbalance weighting
-price_bins_train = pd.qcut(y_train, q=5, labels=False, duplicates='drop')
+bins = [0, 5_000_000, 10_000_000, 20_000_000, 30_000_000, float("inf")]
+labels = ["Budget (Q1)", "Lower-Mid (Q2)", "Mid-Range (Q3)", "Upper-Mid (Q4)", "Luxury (Q5)"]
+price_bins_train = pd.cut(y_train, bins=bins, labels=labels, include_lowest=True)
 sample_weights_train = compute_sample_weight('balanced', price_bins_train)
 
 # Preprocessor
